@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enviar Recibo</title>
+  <style>
+    /* ======== ESTILO DE FUNDO MATRIX ======== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: black;
+      color: #00ff99;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Canvas para os cifrões 💲 */
+    #matrix {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    /* Formulário centralizado */
+    .form-container {
+      position: relative;
+      z-index: 1; /* acima do canvas */
+      max-width: 400px;
+      margin: 60px auto;
+      padding: 20px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid #00ff99;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .form-container label {display:block; margin-top:15px;}
+    .form-container input, .form-container button {
+      width: 90%;
+      margin-top: 10px;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+    }
+    .form-container input {
+      background: #111;
+      color: #00ff99;
+    }
+    .form-container button {
+      background: #00ff99;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .form-container h2 {color: #00ff99;}
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+
+  <div class="form-container">
+    <h2>Enviar Recibo</h2>
+    <form id="reciboForm">
+      <label>Valor (R$)
+        <input type="number" name="valor" step="0.01" required>
+      </label>
+      <label>Descrição
+        <input type="text" name="descricao" required>
+      </label>
+      <label>Arquivo
+        <input type="file" name="arquivo" accept="image/*,application/pdf" required>
+      </label>
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIoogrmPkYe7F-fjVPZO728sekHSAdtC4VwM_o8jSc-w_ENLGsSWgPFHRt0hqoKg3f/exec"; // confirme que termina com /exec
+
+  document.getElementById('reciboForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    console.log("Formulário enviado"); // log 1
+
+    const form = e.target;
+    if (!form.arquivo.files.length) {
+      alert("Escolha um arquivo antes de enviar.");
+      return;
+    }
+
+    const file = form.arquivo.files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = async () => {
+      console.log("Arquivo lido"); // log 2
+      const base64 = reader.result.split(',')[1];
+      const payload = {
+        valor: form.valor.value,
+        descricao: form.descricao.value,
+        fileName: file.name,
+        mimeType: file.type,
+        fileData: base64
+      };
+      console.log("Enviando para Apps Script…"); // log 3
+
+      try {
+        const resp = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const text = await resp.text();
+        console.log("Resposta:", text); // log 4
+        alert(text === "OK" ? "Recibo enviado!" : "Erro: " + text);
+        form.reset();
+      } catch (err) {
+        console.error("Falha na requisição:", err);
+        alert("Erro de rede: veja o console (F12) para detalhes");
+      }
+    };
+
+    reader.readAsDataURL(file);
+  });
+    /* ======== ANIMAÇÃO MATRIX COM CIFRÕES 💲 ======== */
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const fontSize = 20;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(0);
+    const symbol = '💲';
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff99';
+      ctx.font = fontSize + 'px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        ctx.fillText(symbol, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    setInterval(draw, 50);
+  </script>
+</body>
+</html>
